@@ -78,7 +78,7 @@ def bookings(request,login_id,rooms_id):
             #we get the cleaned data
             b_date = form.cleaned_data.get("booking_date")
             b_time = form.cleaned_data.get("booking_time")
-            #b_dura = form.cleaned_data.get("booking_duration")
+            e_time = form.cleaned_data.get("end_time")
             context['form'] = form
             # Check if the booking date is in the past
             current_datetime = datetime.now()
@@ -87,13 +87,18 @@ def bookings(request,login_id,rooms_id):
                 context['message'] = 'Cannot book in the past!'
                 return render(request, 'clovia/booking.html', context)
 
+            #check if end time is before starting time
+            if e_time<b_time:
+                context['message'] = 'End Time in the past!'
+                return render(request, 'clovia/booking.html', context)
+
             #check if the booking already exists
-            if Bookings.objects.filter(room_name=room,booking_date=b_date,booking_time=b_time).first():
+            if Bookings.objects.filter(room_name=room,booking_date=b_date,booking_time__lte=e_time,end_time__gte=b_time).exists():
                 context['message'] = 'Booking already exists!'
                 return render(request, 'clovia/booking.html',context)
 
             else:
-                booking = Bookings.objects.create(user=login,room_name=room,booking_date=b_date,booking_time=b_time)
+                booking = Bookings.objects.create(user=login,room_name=room,booking_date=b_date,booking_time=b_time,end_time=e_time)
                 context['message'] = 'Booking Successful!'
                 return render(request, 'clovia/booking.html',context) 
     
@@ -127,9 +132,22 @@ def edit_booking(request, booking_id,login_id):
         if form.is_valid():
             b_date = form.cleaned_data.get("booking_date")
             b_time = form.cleaned_data.get("booking_time")
-            #b_dura = form.cleaned_data.get("booking_duration")
-            if Bookings.objects.filter(id=booking_id,booking_date=b_date,booking_time=b_time).first():
-                context['form']=form
+            e_time = form.cleaned_data.get("end_time")
+            context['form'] = form
+            # Check if the booking date is in the past
+            current_datetime = datetime.now()
+            booking_datetime = datetime.combine(b_date, b_time)
+            if booking_datetime < current_datetime:
+                context['message'] = 'Cannot book in the past!'
+                return render(request, 'clovia/edit_booking.html', context)
+
+            #check if end time is before starting time
+            if e_time<b_time:
+                context['message'] = 'End Time in the past!'
+                return render(request, 'clovia/edit_booking.html', context)
+
+            #check if the booking already exists
+            if Bookings.objects.filter(id=booking_id,booking_date=b_date,booking_time__lte=e_time,end_time__gte=b_time).exists():
                 context['message'] = 'Booking already exists!'
                 return render(request, 'clovia/edit_booking.html',context)
             else:

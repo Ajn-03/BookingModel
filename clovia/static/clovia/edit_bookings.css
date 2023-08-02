@@ -39,7 +39,7 @@ input[name='booking_time']{
 }
 
 
-input[name='booking_duration']{
+input[name='end_time']{
     margin-left: 10%;
 }
 

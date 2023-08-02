@@ -30,6 +30,7 @@
                         <th>Room Name</th>
                         <th>Booking Date</th>
                         <th>Booking Time</th>
+                        <th>Ends At</th>
                         <th>Edit Booking</th>
                         <th>Add Participant</th>
                         <th>Remove Participant</th>
@@ -41,6 +42,7 @@
                         <td>{{ booking.room_name.room }}</td>
                         <td>{{ booking.booking_date }}</td>
                         <td>{{ booking.booking_time }}</td>
+                        <td>{{booking.end_time}}</td>
                         <td><a href="{% url 'clovia:edit_booking' login.id booking.id  %}">Edit</a></td>
                         <td><a href="">Add</a></td>
                         <td><a href="">Remove</a></td>

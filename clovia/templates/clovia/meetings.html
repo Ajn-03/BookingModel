@@ -29,8 +29,9 @@
                 <thead>
                     <tr>
                         <th>Room Name</th>
-                        <th>Booking Date</th>
-                        <th>Booking Time</th>
+                        <th>Meeting Date</th>
+                        <th>Starts At</th>
+                        <th>Ends At</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,6 +40,8 @@
                         <td>{{ booking.room_name.room }}</td>
                         <td>{{ booking.booking_date }}</td>
                         <td>{{ booking.booking_time }}</td>
+                        <td>{{ booking.end_time }}</td>
+
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -17,7 +17,7 @@ class BookingForm(forms.ModelForm):
     #booking_time = forms.TimeField(widget=forms.TimeInput)
     class Meta:
         model=Bookings
-        fields=('booking_date','booking_time')
+        fields=('booking_date','booking_time','end_time')
         widgets = {
             'booking_date': forms.DateInput(attrs={'type': 'date'}),            
             'booking_time': forms.TimeInput(attrs={'type': 'time'}),
