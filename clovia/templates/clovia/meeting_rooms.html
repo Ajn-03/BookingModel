@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title></title>
+    <link href="https://fonts.googleapis.com/css?family=Pacifico&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'clovia/meeting_rooms.css' %}">
+</head>
+<body>
+    <div id="head"><header>Clovia</header>
+</div>
+<div id="nav"><ul>
+      <li><a class="active" href="">Meeting Rooms</a></li>
+      <li><a href="{% url 'clovia:meetings' login_id=login.id%}">Your Meetings</a></li>
+      <li><a href="{% url 'clovia:view_bookings' login_id=login.id%}">Your Bookings</a></li>
+
+      </ul>
+    </div>
+<h1>Welcome {{name}}</h1>
+    <form method="GET" action="" >
+        {% csrf_token %}
+        <div id="inputs"style="position:absolute;right:2%;">
+            <input type="date" name="date" required style="border-radius: 10px;margin-right:12px;">
+            <input type="time" name="time" style="border-radius: 15px;">
+        </div>
+        <button type="submit"style="position:absolute;right:3%; top:43.3%;border-radius: 20px;background-color:black; color: white;padding:5px 8px;">Search Available Rooms</button>
+    </form>
+
+<div id="list">
+    {% if room_list %}
+    <ul>
+    {% for rooms in room_list %}
+        <li><a href="{% url 'clovia:bookings' login.id rooms.id %}">{{ rooms.room }}</a></li>
+        <svg width="800" height="180">
+            <a href="{% url 'clovia:bookings' login.id rooms.id %}">
+            <rect x="70" y="20" rx="20" ry="20" width="650" height="150"/></a>
+        </svg>
+
+    {% endfor %}
+    </ul>
+</div>
+{% else %}
+    <p>No rooms are available.</p>
+{% endif %}
+
+</body>
+</html>

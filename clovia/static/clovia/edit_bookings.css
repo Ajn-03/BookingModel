@@ -1,0 +1,59 @@
+header {
+    font-family: 'Pacifico';
+    text-align: center;
+    background: #d11a75;
+    font-size: 50px;
+    color: #ffe6f0;
+}
+
+body {
+    background:floralwhite;
+    margin: 0px;
+}
+
+
+#box{
+    position: absolute;
+    top: 30%;
+    left: 33%;
+    background:white; border: 1px solid pink; border-radius: 10px;/* margin: 5%;*/ width:32%;
+}
+
+h3{
+    text-align: center;
+}
+
+label{
+    margin: 4% 8%;
+    font-size: 18px;
+}
+
+input{
+ padding-left: 5%; margin: 4% 5%;
+ border:2px solid black;border-radius: 12px;
+ background-color:floralwhite ;  
+}
+
+input[name='booking_time']{
+    margin-left: 6%;
+}
+
+
+input[name='booking_duration']{
+    margin-left: 10%;
+}
+
+input[type='submit']
+{
+    background-color: black;
+    color: white;
+    padding: 2% 4%;
+    margin-left: 27%;
+    font-size: 22px;
+    border-radius: 25px;
+    margin-bottom: 5px;
+}
+
+p{
+    text-align: center; font-size: 20px;
+}
