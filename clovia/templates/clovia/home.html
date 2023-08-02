@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title></title>
+      <link href="https://fonts.googleapis.com/css?family=Pacifico&display=swap" rel="stylesheet">
+
+	{% load static %}
+
+<link rel="stylesheet" href="{% static 'clovia/home.css' %}">
+
+</head>
+<body>
+  <div id="head"><header>Clovia</header>
+</div>
+
+<div id="login">
+<form action="" method="post"><h3>Login Form</h3>
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" value="Login">
+</form>
+</div>
+<!-- Display validation error messages 
+{% if form.errors %}
+  <ul>
+    {% for field in form %}
+      {% for error in field.errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    {% endfor %}
+  </ul>
+{% endif %}
+-->
+</body>
+</html>

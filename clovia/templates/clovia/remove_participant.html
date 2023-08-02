@@ -1,0 +1,11 @@
+<!--<form method="post">
+  {% csrf_token %}
+  <p>Are you sure you want to remove {{ participant.username }} from the booking?</p>
+  <input type="submit" value="Remove Participant">
+</form>-->
+<form method="post">
+  {% csrf_token %}
+  <label for="participant_email">Participant Email:</label>
+  <input type="email" name="participant_email" required>
+  <input type="submit" value="Remove Participant">
+</form>
