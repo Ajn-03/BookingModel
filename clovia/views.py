@@ -1,7 +1,7 @@
 from django.shortcuts import render,redirect,get_object_or_404
 from django.http import HttpResponse
 # Create your views here.
-from .forms import LoginForm,BookingForm
+from .forms import LoginForm,BookingForm,EditForm,ParticipantForm
 from django.views import generic
 from .models import Login,Meeting_Rooms, Bookings
 from datetime import datetime
@@ -15,7 +15,8 @@ def extract_name_from_username(username):
     first_name = first_name.capitalize()
     return f"{first_name}"
 
-def home(request):#login page view
+#login page view
+def home(request):
     context = {}
     form = LoginForm()
 
@@ -32,15 +33,20 @@ def home(request):#login page view
     context['form'] = form
     return render(request, "clovia/home.html", context)
 
-class Meeting_RoomsView(generic.ListView):#all meeting rooms
+#all meeting rooms
+class Meeting_RoomsView(generic.ListView):
     template_name = "clovia/meeting_rooms.html"
     context_object_name = "room_list"
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         login_id = self.kwargs.get('login_id')
-        login = get_object_or_404(Login,pk=login_id) #we get the username who has logged in
-        name = extract_name_from_username(login.username)#using the function defined above we extract the first name
+        
+        #we get the username who has logged in
+        login = get_object_or_404(Login,pk=login_id)
+        #using the function defined above we extract the first name
+        name = extract_name_from_username(login.username)
+        
         context['name'] = name
         context['login']=login
         return context
@@ -76,6 +82,7 @@ def bookings(request,login_id,rooms_id):
         form = BookingForm(request.POST)
         if form.is_valid():
             #we get the cleaned data
+            participant=form.cleaned_data.get("participants")
             b_date = form.cleaned_data.get("booking_date")
             b_time = form.cleaned_data.get("booking_time")
             e_time = form.cleaned_data.get("end_time")
@@ -99,26 +106,31 @@ def bookings(request,login_id,rooms_id):
 
             else:
                 booking = Bookings.objects.create(user=login,room_name=room,booking_date=b_date,booking_time=b_time,end_time=e_time)
+                #set participants
+                booking.participants.set(participant)
                 context['message'] = 'Booking Successful!'
                 return render(request, 'clovia/booking.html',context) 
     
     context['form'] = form
     return render(request, "clovia/booking.html", context)
 
-def slots(request,login_id,rooms_id):#booked slots
+#booked slots
+def slots(request,login_id,rooms_id):
     login = Login.objects.get(pk=login_id)
     room = Meeting_Rooms.objects.get(pk=rooms_id)
     query_results = Bookings.objects.filter(room_name=room).order_by("-booking_date")
     return render(request,'clovia/slots.html',{'login': login, 'room': room,'query_results':query_results})
 
-def meetings(request,login_id):#your meetings
+#your meetings
+def meetings(request,login_id):
     login = Login.objects.get(pk=login_id)
     user_meetings = Bookings.objects.filter(user=login).order_by("-booking_date")
     participant_meetings = Bookings.objects.filter(user=login).order_by("-booking_date")
-    all_meetings = user_meetings | participant_meetings
+    all_meetings = user_meetings | participant_meetings #doesn't works
     return render(request,'clovia/meetings.html',{'login': login,'query_results':all_meetings})
 
-def view_bookings(request,login_id):#your bookings
+#your bookings
+def view_bookings(request,login_id):
     login = Login.objects.get(pk=login_id)
     query_results = Bookings.objects.filter(user=login).order_by("-booking_date")
     return render(request,'clovia/view_bookings.html',{'login': login,'query_results':query_results})
@@ -128,8 +140,9 @@ def edit_booking(request, booking_id,login_id):
     login = Login.objects.get(pk=login_id)
     context = {'login': login,'booking':booking}
     if request.method == 'POST':
-        form = BookingForm(request.POST, instance=booking)
+        form = EditForm(request.POST, instance=booking)
         if form.is_valid():
+            room=form.cleaned_data.get("room_name")
             b_date = form.cleaned_data.get("booking_date")
             b_time = form.cleaned_data.get("booking_time")
             e_time = form.cleaned_data.get("end_time")
@@ -147,55 +160,47 @@ def edit_booking(request, booking_id,login_id):
                 return render(request, 'clovia/edit_booking.html', context)
 
             #check if the booking already exists
-            if Bookings.objects.filter(id=booking_id,booking_date=b_date,booking_time__lte=e_time,end_time__gte=b_time).exists():
+            if Bookings.objects.filter(room_name=room,booking_date=b_date,booking_time__lte=e_time,
+                                       end_time__gte=b_time).exists():
                 context['message'] = 'Booking already exists!'
                 return render(request, 'clovia/edit_booking.html',context)
             else:
                 form.save()
                 return redirect('clovia:view_bookings',login_id=login_id)
     else:
-        form = BookingForm(instance=booking)
+        form = EditForm(instance=booking)
 
     return render(request, 'clovia/edit_booking.html', {'form': form})
 
-"""def add_participant(request, booking_id,login_id):
-    booking = get_object_or_404(Bookings, id=booking_id)
-    login = Login.objects.get(pk=login_id)
 
-    if request.method == 'POST':
-        participant_email = request.POST.get('participant_email')
-        participant = get_object_or_404(Login, username=participant_email)
-        booking.participants.add(participant)
-        # Redirect to a success page or the updated booking details page.
-        return redirect('clovia:view_bookings',login_id=login_id)
-
-    return render(request, 'clovia/add_participant.html', {'booking': booking})
-
-
-def remove_participant(request, booking_id,login_id):
-    booking = get_object_or_404(Bookings, id=booking_id)
-    login = Login.objects.get(pk=login_id)
-
-    if request.method == 'POST':
-        participant_email = request.POST.get('participant_email')
-        participant = get_object_or_404(Login, username=participant_email)
+def view_participants(request, booking_id):
+    booking = get_object_or_404(Bookings, pk=booking_id)
+    participants = booking.participants.all()
+    form = ParticipantForm()
+    context = {'booking': booking, 'participants': participants}
+    if request.method=='POST':
+        form = ParticipantForm(request.POST)
+        
+        #Add Participants
+        if form.is_valid():
+            participant = form.cleaned_data['participants']
+            booking.participants.add(participant)
+            context['form'] = form
+            context['message'] = 'Added Successfully!'
+            return render(request, 'clovia/participants.html',context) 
+    
+    #Remove Participants
+    if 'remove_participant' in request.POST:
+        participant_id = request.POST.get('remove_participant')
+        participant = get_object_or_404(Login, pk=participant_id)
         booking.participants.remove(participant)
-        # Redirect to a success page or the updated booking details page.
-        return redirect('clovia:view_bookings',login_id=login_id)
+        context['form'] = form
+        return render(request, 'clovia/participants.html',context) 
+     
+    context['form'] = form
+    return render(request, 'clovia/participants.html', context)
 
-    return render(request, 'clovia/add_participant.html', {'booking': booking})
 
-def remove_participant(request, booking_id, participant_id,login_id):
-    booking = get_object_or_404(Bookings, id=booking_id)
-    participant = get_object_or_404(Login, id=participant_id)
-    login = Login.objects.get(pk=login_id)
-
-    if request.method == 'POST':
-        booking.participants.remove(participant)
-        # Redirect to a success page or the updated booking details page.
-        return redirect('clovia:view_bookings',login_id=login_id)
-
-    return render(request, 'clovia/remove_participant.html', {'booking': booking, 'participant': participant})"""
 
 
     

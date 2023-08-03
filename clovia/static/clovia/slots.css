@@ -40,18 +40,6 @@ li a:hover {
 .active {
   background-color:#111;
 }
-/*#nav{
-    background-color: black; opacity: 0.8;
-    color: oldlace;height: 50px;
-}
-
-#nav ul{text-align: center;}
-#nav ul,li, a
-{display: inline-block;margin-right: 15px;text-decoration: none; color: oldlace;}
-
-#booking{
-    background:white; border: 1px solid pink; border-radius: 10px;
-}*/
 
 table{ position: absolute;
     
@@ -69,3 +57,22 @@ table th {
     border: 2px solid black;padding: 2%; background:mistyrose;
  ;
 }
+
+p{
+    text-align: center;
+}
+
+button{
+    background-color: black;
+    color: white;
+    padding: 2% 4%;
+    margin-left: 38%;
+    font-size: 18px;
+    border-radius: 25px;
+    margin-bottom: 5px;
+}
+
+/*.errorlist{
+    display:none;
+}
+*/

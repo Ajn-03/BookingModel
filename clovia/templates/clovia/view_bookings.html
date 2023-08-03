@@ -32,8 +32,7 @@
                         <th>Booking Time</th>
                         <th>Ends At</th>
                         <th>Edit Booking</th>
-                        <th>Add Participant</th>
-                        <th>Remove Participant</th>
+                        <th>View Participants</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -44,9 +43,7 @@
                         <td>{{ booking.booking_time }}</td>
                         <td>{{booking.end_time}}</td>
                         <td><a href="{% url 'clovia:edit_booking' login.id booking.id  %}">Edit</a></td>
-                        <td><a href="">Add</a></td>
-                        <td><a href="">Remove</a></td>
-
+                        <td><a href="{% url 'clovia:view_participants' booking.id  %}">View Participants</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>

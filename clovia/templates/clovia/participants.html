@@ -15,33 +15,46 @@
     <div id="head">
         <header>Clovia</header>
     </div>
-    <div id="nav"><ul>
-      <li><a href="	{% url 'clovia:meeting_rooms' login.id %}">Home</a></li>
-      <li><a href="{% url 'clovia:meetings' login_id=login.id%}">Your Meetings</a></li>
-      <li><a class="active" href="">View Participants</a></li>
-      </ul>
-    </div>
-
         <!--<h3>Participants for room 1</h3>-->
+        <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Add Participant</button>
+    </form>
+
         <div id="booking">
             <table>
                 <thead>
                     <tr>
-                        <th>Participant</th>
-                        <th>Booking Date</th>
-                        <th>Booking Time</th>
+                        <th>View Participants</th>
+                        <th>Remove Participant</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for booking in query_results %}
-                    <tr>
-                        <td>{{ booking.participant }}</td>
-                        <td>{{ booking.booking_date }}</td>
-                        <td>{{ booking.booking_time }}</td>
+                    {% for participant in participants %}
+                    <tr> 
+                        <td>{{ participant.username }}</td>
+                        <td>
+                           <form method="post">
+                            {% csrf_token %}
+                               <input type="hidden" name="remove_participant" value="{{ participant.id }}">
+                               <button type="submit">Remove</button>
+                           </form>
+                       </td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+
+        <!--        <ul>
+        {% for participant in participants %}
+            <li>{{ participant.username }} - Remove</li>
+        {% empty %}
+            <li>No participants for this booking.</li>
+        {% endfor %}
+    </ul>-->
+
         </div>
     
 </body>

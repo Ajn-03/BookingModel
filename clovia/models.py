@@ -18,9 +18,9 @@ class Bookings(models.Model):
     booking_date = models.DateField("Booking On")
     booking_time = models.TimeField("Booking At")
     end_time = models.TimeField("Ends At")#for {self.booking_duration}
-    participants = models.ManyToManyField(Login, blank=True,related_name='bookings_participated')
+    participants = models.ManyToManyField(Login,related_name='bookings_participated')
 
     def __str__(self):
-        return f"{self.user.username} booked {self.room_name.room}  on {self.booking_date} at {self.booking_time}"
+        return f"{self.user.username} booked {self.room_name.room}  on {self.booking_date} at {self.booking_time} invited {self.participants}"
 
    

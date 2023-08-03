@@ -11,7 +11,6 @@ urlpatterns = [
     path("<int:login_id>/meetings/", views.meetings, name="meetings"),
     path("<int:login_id>/bookings/", views.view_bookings, name="view_bookings"),    
     path('<int:login_id>/<int:booking_id>/edit/', views.edit_booking, name='edit_booking'),
-    #path('<int:login_id>/<int:booking_id>/add_participant/', views.add_participant, name='add_participant'),
-    #path('<int:login_id>/<int:booking_id>/remove_participant/', views.remove_participant, name='remove_participant'),
+    path('<int:booking_id>/view_participant/', views.view_participants, name='view_participants'),
 
 ]

@@ -14,14 +14,26 @@ class LoginForm(forms.ModelForm):
         fields = ('username', 'password')
         
 class BookingForm(forms.ModelForm):
-    #booking_time = forms.TimeField(widget=forms.TimeInput)
     class Meta:
         model=Bookings
-        fields=('booking_date','booking_time','end_time')
+        fields=('booking_date','booking_time','end_time','participants')
         widgets = {
             'booking_date': forms.DateInput(attrs={'type': 'date'}),            
             'booking_time': forms.TimeInput(attrs={'type': 'time'}),
             'end_time': forms.TimeInput(attrs={'type': 'time'}),
         }
         
-
+                
+class EditForm(forms.ModelForm):
+    class Meta:
+        model=Bookings
+        fields=('room_name','booking_date','booking_time','end_time')
+        widgets = {
+            'booking_date': forms.DateInput(attrs={'type': 'date'}),            
+            'booking_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
+        }
+        
+class ParticipantForm(forms.Form):
+    participants=forms.ModelChoiceField(queryset=Login.objects.all())
+    
