@@ -28,6 +28,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th>Host</th>
                         <th>Room Name</th>
                         <th>Meeting Date</th>
                         <th>Starts At</th>
@@ -37,6 +38,7 @@
                 <tbody>
                     {% for booking in query_results %}
                     <tr>
+                        <td>{{booking.user.username}}</td>
                         <td>{{ booking.room_name.room }}</td>
                         <td>{{ booking.booking_date }}</td>
                         <td>{{ booking.booking_time }}</td>

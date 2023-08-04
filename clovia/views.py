@@ -125,7 +125,7 @@ def slots(request,login_id,rooms_id):
 def meetings(request,login_id):
     login = Login.objects.get(pk=login_id)
     user_meetings = Bookings.objects.filter(user=login).order_by("-booking_date")
-    participant_meetings = Bookings.objects.filter(user=login).order_by("-booking_date")
+    participant_meetings = Bookings.objects.filter(participants=login).order_by("-booking_date")
     all_meetings = user_meetings | participant_meetings #doesn't works
     return render(request,'clovia/meetings.html',{'login': login,'query_results':all_meetings})
 
@@ -135,6 +135,7 @@ def view_bookings(request,login_id):
     query_results = Bookings.objects.filter(user=login).order_by("-booking_date")
     return render(request,'clovia/view_bookings.html',{'login': login,'query_results':query_results})
 
+#edit bookings
 def edit_booking(request, booking_id,login_id):
     booking = get_object_or_404(Bookings, id=booking_id)
     login = Login.objects.get(pk=login_id)
