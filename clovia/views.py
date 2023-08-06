@@ -3,7 +3,7 @@ from django.http import HttpResponse
 # Create your views here.
 from .forms import LoginForm,BookingForm,EditForm,ParticipantForm
 from django.views import generic
-from .models import Login,Meeting_Rooms, Bookings
+from .models import Login,Meeting_Rooms, Bookings, Notification
 from datetime import datetime
 from django.db.models import Q
 
@@ -45,10 +45,24 @@ class Meeting_RoomsView(generic.ListView):
         #we get the username who has logged in
         login = get_object_or_404(Login,pk=login_id)
         #using the function defined above we extract the first name
-        name = extract_name_from_username(login.username)
-        
+        name = extract_name_from_username(login.username)      
         context['name'] = name
         context['login']=login
+        
+        #Delete Past Notifications
+        now=datetime.now().date()
+        past_bookings=Bookings.objects.filter(booking_date__lt=now)
+        for booking in past_bookings:
+            past_booking_datetime = datetime.combine(booking.booking_date, booking.booking_time)
+            if past_booking_datetime < datetime.now():
+                notification_criteria = (Q(message__contains=str(booking.booking_date)) & Q(message__contains=str(booking.booking_time)))
+                Notification.objects.filter(notification_criteria).delete()
+                 
+        # Fetch and mark notifications
+        notifications = Notification.objects.filter(receiver=login)
+        print("Notifications Queryset:", notifications)
+        notifications.update(is_read=True)
+        context['notifications'] = notifications
         return context
 
     def get_queryset(self):
@@ -91,6 +105,8 @@ def bookings(request,login_id,rooms_id):
             current_datetime = datetime.now()
             booking_datetime = datetime.combine(b_date, b_time)
             if booking_datetime < current_datetime:
+                notification_criteria = (Q(message__contains=str(booking.booking_date)) & Q(message__contains=str(booking.booking_time)))
+                Notification.objects.filter(notification_criteria).delete()
                 context['message'] = 'Cannot book in the past!'
                 return render(request, 'clovia/booking.html', context)
 
@@ -108,6 +124,11 @@ def bookings(request,login_id,rooms_id):
                 booking = Bookings.objects.create(user=login,room_name=room,booking_date=b_date,booking_time=b_time,end_time=e_time)
                 #set participants
                 booking.participants.set(participant)
+                #send notifications
+                for participant_user in participant.all():
+                    notification_message = f"{login} has added you as a participant to the meeting on {b_date} at {b_time} in {room.room}."
+                    Notification.objects.create(receiver=participant_user, message=notification_message)
+
                 context['message'] = 'Booking Successful!'
                 return render(request, 'clovia/booking.html',context) 
     
@@ -118,15 +139,31 @@ def bookings(request,login_id,rooms_id):
 def slots(request,login_id,rooms_id):
     login = Login.objects.get(pk=login_id)
     room = Meeting_Rooms.objects.get(pk=rooms_id)
+    #Delete Past Bookings
+    now=datetime.now().date()
+    past_bookings=Bookings.objects.filter(booking_date__lt=now)
+    for booking in past_bookings:
+        past_booking_datetime = datetime.combine(booking.booking_date, booking.booking_time)
+        if past_booking_datetime < datetime.now():
+            Bookings.objects.filter(booking_date=booking.booking_date , booking_time=booking.booking_time).delete()        
+    
     query_results = Bookings.objects.filter(room_name=room).order_by("-booking_date")
     return render(request,'clovia/slots.html',{'login': login, 'room': room,'query_results':query_results})
 
 #your meetings
 def meetings(request,login_id):
-    login = Login.objects.get(pk=login_id)
-    user_meetings = Bookings.objects.filter(user=login).order_by("-booking_date")
-    participant_meetings = Bookings.objects.filter(participants=login).order_by("-booking_date")
-    all_meetings = user_meetings | participant_meetings #doesn't works
+    login = Login.objects.get(pk=login_id)    
+    #Delete Past Meetings
+    now=datetime.now().date()
+    past_bookings=Bookings.objects.filter(booking_date__lt=now)
+    for booking in past_bookings:
+        past_booking_datetime = datetime.combine(booking.booking_date, booking.booking_time)
+        if past_booking_datetime < datetime.now():
+            booking.delete()        
+    
+    user_meetings = Bookings.objects.filter(user=login)
+    participant_meetings = Bookings.objects.filter(participants=login)
+    all_meetings = user_meetings.union(participant_meetings).order_by("-booking_date")
     return render(request,'clovia/meetings.html',{'login': login,'query_results':all_meetings})
 
 #your bookings
@@ -186,8 +223,11 @@ def view_participants(request, booking_id):
         if form.is_valid():
             participant = form.cleaned_data['participants']
             booking.participants.add(participant)
-            context['form'] = form
-            context['message'] = 'Added Successfully!'
+            
+            #send notification
+            for participant_user in participants:
+                notification_message = f"{booking.user} has added you as a participant to the meeting on {booking.booking_date} at {booking.booking_time} in {booking.room_name.room}."
+                Notification.objects.create(receiver=participant_user, message=notification_message)
             return render(request, 'clovia/participants.html',context) 
     
     #Remove Participants
@@ -195,11 +235,17 @@ def view_participants(request, booking_id):
         participant_id = request.POST.get('remove_participant')
         participant = get_object_or_404(Login, pk=participant_id)
         booking.participants.remove(participant)
+        
+        #remove notifications
+        notification_criteria = (Q(receiver=participant) & Q(message__contains=booking.user.username) &                                                                      Q(message__contains=str(booking.booking_date)) & Q(message__contains=str(booking.booking_time)) &
+                                 Q(message__contains=booking.room_name.room))
+        Notification.objects.filter(notification_criteria).delete()
         context['form'] = form
         return render(request, 'clovia/participants.html',context) 
      
     context['form'] = form
     return render(request, 'clovia/participants.html', context)
+
 
 
 

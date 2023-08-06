@@ -24,8 +24,11 @@ class Bookings(models.Model):
         return f"{self.user.username} booked {self.room_name.room}  on {self.booking_date} at {self.booking_time} invited {self.participants}"
 
 class Notification(models.Model):
+    receiver = models.ForeignKey(Login, on_delete=models.CASCADE)
     is_read = models.BooleanField(default=False)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    sender = models.ForeignKey(Login, on_delete=models.CASCADE)
+    def __str__(self):
+        return self.message
+
    

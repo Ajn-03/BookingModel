@@ -12,5 +12,4 @@ urlpatterns = [
     path("<int:login_id>/bookings/", views.view_bookings, name="view_bookings"),    
     path('<int:login_id>/<int:booking_id>/edit/', views.edit_booking, name='edit_booking'),
     path('<int:booking_id>/view_participant/', views.view_participants, name='view_participants'),
-
 ]

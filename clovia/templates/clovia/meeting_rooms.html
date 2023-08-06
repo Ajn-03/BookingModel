@@ -4,6 +4,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link href="https://fonts.googleapis.com/css?family=Pacifico&display=swap" rel="stylesheet">
     {% load static %}
     <link rel="stylesheet" href="{% static 'clovia/meeting_rooms.css' %}">
@@ -11,11 +12,23 @@
 <body>
     <div id="head"><header>Clovia</header>
 </div>
+
 <div id="nav"><ul>
       <li><a class="active" href="">Meeting Rooms</a></li>
       <li><a href="{% url 'clovia:meetings' login_id=login.id%}">Your Meetings</a></li>
       <li><a href="{% url 'clovia:view_bookings' login_id=login.id%}">Your Bookings</a></li>
-
+      <li><div class="dropdown">
+        <button class="dropbtn">Notifications <i class="fa fa-caret-down"></i></button>
+        <div class="dropdown-content"><ul>
+        {% if notifications %}
+            {% for notification in notifications %}
+                <li>{{ notification.message }}</li>
+            {% endfor %}
+        {% else %}
+            <li>No Notifications</li>
+        {% endif %}
+        </ul>
+        </div></div></li>
       </ul>
     </div>
 <h1>Welcome {{name}}</h1>
@@ -44,6 +57,5 @@
 {% else %}
     <p>No rooms are available.</p>
 {% endif %}
-
 </body>
 </html>
