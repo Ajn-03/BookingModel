@@ -6,6 +6,12 @@ from django.views import generic
 from .models import Login,Meeting_Rooms, Bookings, Notification
 from datetime import datetime
 from django.db.models import Q
+from asgiref.sync import async_to_sync
+from django.core.mail import send_mail
+
+@async_to_sync
+async def send_email_notification(subject, message, from_email, recipient_list):
+    send_mail(subject, message, from_email, recipient_list)
 
 def extract_name_from_username(username):
     #extract the name part
@@ -105,8 +111,6 @@ def bookings(request,login_id,rooms_id):
             current_datetime = datetime.now()
             booking_datetime = datetime.combine(b_date, b_time)
             if booking_datetime < current_datetime:
-                notification_criteria = (Q(message__contains=str(booking.booking_date)) & Q(message__contains=str(booking.booking_time)))
-                Notification.objects.filter(notification_criteria).delete()
                 context['message'] = 'Cannot book in the past!'
                 return render(request, 'clovia/booking.html', context)
 
@@ -128,6 +132,11 @@ def bookings(request,login_id,rooms_id):
                 for participant_user in participant.all():
                     notification_message = f"{login} has added you as a participant to the meeting on {b_date} at {b_time} in {room.room}."
                     Notification.objects.create(receiver=participant_user, message=notification_message)
+                    subject = 'Meeting Invitation'
+                    message = notification_message
+                    from_email = login
+                    recipient_list = [participant_user]
+                    send_email_notification(subject, message, from_email, recipient_list)
 
                 context['message'] = 'Booking Successful!'
                 return render(request, 'clovia/booking.html',context) 
@@ -228,6 +237,12 @@ def view_participants(request, booking_id):
             for participant_user in participants:
                 notification_message = f"{booking.user} has added you as a participant to the meeting on {booking.booking_date} at {booking.booking_time} in {booking.room_name.room}."
                 Notification.objects.create(receiver=participant_user, message=notification_message)
+                subject = 'Meeting Invitation'
+                message = notification_message
+                from_email = booking.user
+                recipient_list = [participant_user]
+                send_email_notification(subject, message, from_email, recipient_list)
+
             return render(request, 'clovia/participants.html',context) 
     
     #Remove Participants
