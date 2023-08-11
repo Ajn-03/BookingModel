@@ -4,10 +4,11 @@ from django.http import HttpResponse
 from .forms import LoginForm,BookingForm,EditForm,ParticipantForm
 from django.views import generic
 from .models import Login,Meeting_Rooms, Bookings, Notification
-from datetime import datetime
+from datetime import datetime,timezone,timedelta
 from django.db.models import Q
 from asgiref.sync import async_to_sync
 from django.core.mail import send_mail
+from .google_calendar import create_event,event_removal
 
 @async_to_sync
 async def send_email_notification(subject, message, from_email, recipient_list):
@@ -110,6 +111,13 @@ def bookings(request,login_id,rooms_id):
             # Check if the booking date is in the past
             current_datetime = datetime.now()
             booking_datetime = datetime.combine(b_date, b_time)
+            end_datetime=datetime.combine(b_date, e_time)
+            # Calculate the timezone offset based on the user's timezone
+            user_timezone_offset = booking_datetime.astimezone(timezone.utc).strftime('%z')
+            # Format start and end times with timezone offset
+            start_time_formatted = booking_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
+            end_time_formatted = end_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
+    
             if booking_datetime < current_datetime:
                 context['message'] = 'Cannot book in the past!'
                 return render(request, 'clovia/booking.html', context)
@@ -126,9 +134,14 @@ def bookings(request,login_id,rooms_id):
 
             else:
                 booking = Bookings.objects.create(user=login,room_name=room,booking_date=b_date,booking_time=b_time,end_time=e_time)
-                #set participants
+                #set participants               
                 booking.participants.set(participant)
-                #send notifications
+                
+                #sending meeting inviation in google calendar
+                participants_emails = [participant_user.username for participant_user in participant.all()]
+                create_event(f'{room.room}',start_time_formatted,end_time_formatted,participants_emails)
+                
+                #send notifications and email invitaion
                 for participant_user in participant.all():
                     notification_message = f"{login} has added you as a participant to the meeting on {b_date} at {b_time} in {room.room}."
                     Notification.objects.create(receiver=participant_user, message=notification_message)
@@ -137,7 +150,7 @@ def bookings(request,login_id,rooms_id):
                     from_email = login
                     recipient_list = [participant_user]
                     send_email_notification(subject, message, from_email, recipient_list)
-
+                    
                 context['message'] = 'Booking Successful!'
                 return render(request, 'clovia/booking.html',context) 
     
@@ -161,7 +174,8 @@ def slots(request,login_id,rooms_id):
 
 #your meetings
 def meetings(request,login_id):
-    login = Login.objects.get(pk=login_id)    
+    login = Login.objects.get(pk=login_id)  
+
     #Delete Past Meetings
     now=datetime.now().date()
     past_bookings=Bookings.objects.filter(booking_date__lt=now)
@@ -223,42 +237,57 @@ def edit_booking(request, booking_id,login_id):
 def view_participants(request, booking_id):
     booking = get_object_or_404(Bookings, pk=booking_id)
     participants = booking.participants.all()
-    form = ParticipantForm()
-    context = {'booking': booking, 'participants': participants}
-    if request.method=='POST':
+    
+    if request.method == 'POST':
         form = ParticipantForm(request.POST)
         
-        #Add Participants
-        if form.is_valid():
-            participant = form.cleaned_data['participants']
-            booking.participants.add(participant)
+        if 'remove_participant' in request.POST:
+            participant_id = request.POST.get('remove_participant')
+            participant = get_object_or_404(Login, pk=participant_id)
+            booking.participants.remove(participant)
             
-            #send notification
-            for participant_user in participants:
-                notification_message = f"{booking.user} has added you as a participant to the meeting on {booking.booking_date} at {booking.booking_time} in {booking.room_name.room}."
-                Notification.objects.create(receiver=participant_user, message=notification_message)
-                subject = 'Meeting Invitation'
-                message = notification_message
-                from_email = booking.user
-                recipient_list = [participant_user]
-                send_email_notification(subject, message, from_email, recipient_list)
+            # Remove notifications
+            notification_criteria = (
+                Q(receiver=participant) &
+                Q(message__contains=booking.user.username) &
+                Q(message__contains=str(booking.booking_date)) &
+                Q(message__contains=str(booking.booking_time)) &
+                Q(message__contains=booking.room_name.room)
+            )
+            Notification.objects.filter(notification_criteria).delete()
+            event_removal(booking.google_calendar_event_id, participant)
 
-            return render(request, 'clovia/participants.html',context) 
-    
-    #Remove Participants
-    if 'remove_participant' in request.POST:
-        participant_id = request.POST.get('remove_participant')
-        participant = get_object_or_404(Login, pk=participant_id)
-        booking.participants.remove(participant)
-        
-        #remove notifications
-        notification_criteria = (Q(receiver=participant) & Q(message__contains=booking.user.username) &                                                                      Q(message__contains=str(booking.booking_date)) & Q(message__contains=str(booking.booking_time)) &
-                                 Q(message__contains=booking.room_name.room))
-        Notification.objects.filter(notification_criteria).delete()
-        context['form'] = form
-        return render(request, 'clovia/participants.html',context) 
-     
-    context['form'] = form
+        else:
+            if form.is_valid():
+                participant = form.cleaned_data['participants']
+                booking.participants.add(participant)
+                b_date=booking.booking_date
+                b_time=booking.booking_time
+                e_time=booking.end_time                
+                booking_datetime = datetime.combine(b_date, b_time)
+                end_datetime=datetime.combine(b_date, e_time)
+                user_timezone_offset = booking_datetime.astimezone(timezone.utc).strftime('%z')
+                start_time_formatted = booking_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
+                end_time_formatted = end_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
+                #sending meeting inviation in google calendar
+                participants_emails = [participant_user.username for participant_user in participants]
+                create_event(start_time_formatted,end_time_formatted,participants_emails)
+                
+                # Send notification and email
+                for participant_user in participants:
+                    notification_message = f"{booking.user} has added you as a participant to the meeting on {booking.booking_date} at {booking.booking_time} in {booking.room_name.room}."
+                    Notification.objects.create(receiver=participant_user, message=notification_message)
+                    subject = 'Meeting Invitation'
+                    message = notification_message
+                    from_email = booking.user
+                    recipient_list = [participant_user]  # Assuming participant_user has an 'email' field
+                    send_email_notification(subject, message, from_email, recipient_list)
+        # After processing the form, create a new instance of the form
+        form = ParticipantForm()
+    else:
+        form = ParticipantForm()
+
+    context = {'booking': booking, 'participants': participants, 'form': form}
     return render(request, 'clovia/participants.html', context)
 
 
