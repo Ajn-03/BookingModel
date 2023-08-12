@@ -17,9 +17,9 @@ class Bookings(models.Model):
     room_name = models.ForeignKey(Meeting_Rooms, on_delete=models.CASCADE)
     booking_date = models.DateField("Booking On")
     booking_time = models.TimeField("Booking At")
-    end_time = models.TimeField("Ends At")#for {self.booking_duration}
+    end_time = models.TimeField("Ends At")
     participants = models.ManyToManyField(Login,related_name='bookings_participated')
-
+    google_calendar_event_id = models.CharField(max_length=100, blank=True, null=True)
     def __str__(self):
         return f"{self.user.username} booked {self.room_name.room}  on {self.booking_date} at {self.booking_time} invited {self.participants}"
 

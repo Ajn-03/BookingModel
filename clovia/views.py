@@ -8,7 +8,7 @@ from datetime import datetime,timezone,timedelta
 from django.db.models import Q
 from asgiref.sync import async_to_sync
 from django.core.mail import send_mail
-from .google_calendar import create_event,event_removal
+from .google_calendar import create_event,event_removal,event_addition,event_edit
 
 @async_to_sync
 async def send_email_notification(subject, message, from_email, recipient_list):
@@ -139,7 +139,7 @@ def bookings(request,login_id,rooms_id):
                 
                 #sending meeting inviation in google calendar
                 participants_emails = [participant_user.username for participant_user in participant.all()]
-                create_event(f'{room.room}',start_time_formatted,end_time_formatted,participants_emails)
+                create_event(f'{room.room}',start_time_formatted,end_time_formatted,participants_emails,booking)
                 
                 #send notifications and email invitaion
                 for participant_user in participant.all():
@@ -211,6 +211,11 @@ def edit_booking(request, booking_id,login_id):
             # Check if the booking date is in the past
             current_datetime = datetime.now()
             booking_datetime = datetime.combine(b_date, b_time)
+            end_datetime=datetime.combine(b_date, e_time)
+            user_timezone_offset = booking_datetime.astimezone(timezone.utc).strftime('%z')
+            start_time_formatted = booking_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
+            end_time_formatted = end_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
+                
             if booking_datetime < current_datetime:
                 context['message'] = 'Cannot book in the past!'
                 return render(request, 'clovia/edit_booking.html', context)
@@ -226,6 +231,19 @@ def edit_booking(request, booking_id,login_id):
                 context['message'] = 'Booking already exists!'
                 return render(request, 'clovia/edit_booking.html',context)
             else:
+                # Retrieve the original event ID
+                original_event_id = booking.google_calendar_event_id
+                # Update the booking details
+                form.save()
+                # Create a new event with the updated details
+                updated_booking = Bookings.objects.get(id=booking_id)
+                participants_emails = [participant.username for participant in booking.participants.all()]
+                event_edit(original_event_id, participants_emails)
+                create_event(
+                    f'{room}',start_time_formatted,end_time_formatted,participants_emails,
+                    updated_booking
+                )
+                # Remove the original event using the event_removal function
                 form.save()
                 return redirect('clovia:view_bookings',login_id=login_id)
     else:
@@ -255,12 +273,20 @@ def view_participants(request, booking_id):
                 Q(message__contains=booking.room_name.room)
             )
             Notification.objects.filter(notification_criteria).delete()
-            event_removal(booking.google_calendar_event_id, participant)
+            
+            # Get the participant's email and the event ID associated with the booking
+            participant_email = participant.username
+            event_id = booking.google_calendar_event_id
+            
+            # Remove the participant from the event
+            event_removal(event_id, participant_email)
+            
 
         else:
             if form.is_valid():
                 participant = form.cleaned_data['participants']
                 booking.participants.add(participant)
+                r=booking.room_name.room
                 b_date=booking.booking_date
                 b_time=booking.booking_time
                 e_time=booking.end_time                
@@ -270,18 +296,18 @@ def view_participants(request, booking_id):
                 start_time_formatted = booking_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
                 end_time_formatted = end_datetime.strftime('%Y-%m-%dT%H:%M:%S') + user_timezone_offset
                 #sending meeting inviation in google calendar
-                participants_emails = [participant_user.username for participant_user in participants]
-                create_event(start_time_formatted,end_time_formatted,participants_emails)
-                
-                # Send notification and email
-                for participant_user in participants:
-                    notification_message = f"{booking.user} has added you as a participant to the meeting on {booking.booking_date} at {booking.booking_time} in {booking.room_name.room}."
-                    Notification.objects.create(receiver=participant_user, message=notification_message)
-                    subject = 'Meeting Invitation'
-                    message = notification_message
-                    from_email = booking.user
-                    recipient_list = [participant_user]  # Assuming participant_user has an 'email' field
-                    send_email_notification(subject, message, from_email, recipient_list)
+                participant_email = participant.username
+                event_id = booking.google_calendar_event_id
+                event_addition(event_id, participant_email)
+            
+                # Send notification and email                
+                notification_message = f"{booking.user} has added you as a participant to the meeting on {booking.booking_date} at {booking.booking_time} in {booking.room_name.room}."
+                Notification.objects.create(receiver=participant, message=notification_message)
+                subject = 'Meeting Invitation'
+                message = notification_message
+                from_email = booking.user
+                recipient_list = [participant]  # Assuming participant_user has an 'email' field
+                send_email_notification(subject, message, from_email, recipient_list)
         # After processing the form, create a new instance of the form
         form = ParticipantForm()
     else:

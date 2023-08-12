@@ -1,5 +1,5 @@
 # google_calendar.py
-
+from .models import Bookings
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import pickle
@@ -11,7 +11,7 @@ service = build("calendar", "v3", credentials=credentials)
 result=service.calendarList().list().execute()
 calendar_id=result['items'][0]['id']
 
-def create_event(location,start_timing,end_timing,participants_emails):
+def create_event(location,start_timing,end_timing,participants_emails,booking):    
     # Create a list of attendees using participants_emails
     attendees = [{"email": email} for email in participants_emails]
     event = {
@@ -21,19 +21,33 @@ def create_event(location,start_timing,end_timing,participants_emails):
                           'end': {'dateTime': end_timing, 'timeZone': 'Asia/Kolkata'},
                           'attendees': attendees
                          }
-    return service.events().insert(calendarId=calendar_id, body=event).execute()
+    # Get the event ID from the Google Calendar response
+    result=service.events().insert(calendarId=calendar_id, body=event).execute()
+    google_calendar_event_id = result['id']
+    # Update the booking's google_calendar_event_id
+    booking.google_calendar_event_id = google_calendar_event_id
+    booking.save()
+
+    return result
                 
-def event_addition(event_id, attendees):
+def event_addition(event_id,participant_email):
     event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
-    event['attendees'] += [{'email': email} for email in attendees]
+    event['attendees'] += [{'email': participant_email}]
     
     updated_event = service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
     return updated_event
 
-def event_removal(event_id, attendees):
+def event_removal(event_id, participant_email):
     event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
     event['attendees'] = [attendee for attendee in event['attendees'] if attendee['email'] != participant_email]
 
     updated_event = service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
     return updated_event
-            
+
+def event_edit(event_id, attendees):
+    event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    event['attendees'] = [attendee for attendee in event.get('attendees', []) if attendee['email'] not in attendees]
+
+    updated_event = service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
+    return updated_event
+
