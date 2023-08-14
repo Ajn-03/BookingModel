@@ -30,24 +30,35 @@ def create_event(location,start_timing,end_timing,participants_emails,booking):
 
     return result
                 
-def event_addition(event_id,participant_email):
+def event_addition(event_id,participant_email,booking):
     event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
-    event['attendees'] += [{'email': participant_email}]
+    event['attendees'].append({"email": participant_email})
     
     updated_event = service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
+    booking.google_calendar_event_id = updated_event['id']
+    booking.save()
     return updated_event
 
-def event_removal(event_id, participant_email):
+def event_removal(event_id, participant_email,booking):
     event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
     event['attendees'] = [attendee for attendee in event['attendees'] if attendee['email'] != participant_email]
 
     updated_event = service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
+    booking.google_calendar_event_id = updated_event['id']
+    booking.save()
     return updated_event
 
-def event_edit(event_id, attendees):
+def update_event(event_id,location,start_timing, end_timing,booking):
     event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
-    event['attendees'] = [attendee for attendee in event.get('attendees', []) if attendee['email'] not in attendees]
+
+    # Update event details
+    event['location'] = location
+    event['start']['dateTime'] = start_timing
+    event['end']['dateTime'] = end_timing
 
     updated_event = service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
+    # Update the Google Calendar event ID in the booking
+    booking.google_calendar_event_id = updated_event['id']
+    booking.save()
     return updated_event
 
